@@ -3,6 +3,7 @@ package com.example.appvulkan;
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.os.SystemClock;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -14,7 +15,7 @@ import javax.microedition.khronos.opengles.GL10;
 public class GLRenderer implements GLSurfaceView.Renderer {
 
     private final Context context;
-
+    private final MainActivity mainActivity;
     private int program;
     private int texture;
     private FloatBuffer vertexBuffer, texCoordBuffer;
@@ -27,8 +28,11 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,  1.0f,  0.0f
     };
 
+    private boolean isRendering = false; // Flag to control render state
+
     public GLRenderer(Context context) {
         this.context = context;
+        this.mainActivity = (MainActivity) context;
 
         vertexBuffer = ByteBuffer.allocateDirect(VERTICES.length * 4)
                 .order(ByteOrder.nativeOrder())
@@ -66,6 +70,12 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        if (!isRendering) {
+            return; // Do nothing if not rendering
+        }
+
+        long startTime = SystemClock.elapsedRealtime(); // Start the timer
+
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
         GLES20.glUseProgram(program);
@@ -88,6 +98,26 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
         GLES20.glDisableVertexAttribArray(positionHandle);
         GLES20.glDisableVertexAttribArray(texCoordHandle);
+
+        long endTime = SystemClock.elapsedRealtime(); // End the timer
+        long renderTime = endTime - startTime; // Calculate render time
+
+        // Update render time on UI thread
+        mainActivity.runOnUiThread(() -> mainActivity.updateRenderTime(renderTime));
+
+        isRendering = false; // Reset the rendering flag
+    }
+
+    // Request to start rendering
+    public void requestRender() {
+        isRendering = true;
+    }
+
+    // Method to reset the renderer (reset image and time)
+    public void reset() {
+        isRendering = false; // Dừng mọi quá trình render đang diễn ra
+        texture = TextureUtils.loadTexture(context, R.drawable.pexels2); // Tải lại texture gốc
+        isRendering = true; // Kích hoạt render lại
     }
 
 }
